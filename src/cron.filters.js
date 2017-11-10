@@ -52,10 +52,8 @@ export function CronMonthName() {
 
 export function CronDayName() {
   "ngInject";
-  return function(input, cronType) {
-    let days;
-    if(cronType === "quartz") {
-      days = {
+  return function(input) {
+    let days = {
         1: "Sunday",
         2: "Monday",
         3: "Tuesday",
@@ -64,18 +62,6 @@ export function CronDayName() {
         6: "Friday",
         7: "Saturday",
       };
-    } 
-    else {
-      days = {
-        0: "Sunday",
-        1: "Monday",
-        2: "Tuesday",
-        3: "Wednesday",
-        4: "Thursday",
-        5: "Friday",
-        6: "Saturday",
-      };
-    }
     if (input !== null && angular.isDefined(days[input])) {
       return days[input];
     } 

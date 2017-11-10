@@ -13,39 +13,31 @@ export function CronGeneratorDirective (cronGeneratorService) {
     {
       value: 1,
       label: "Minute"
-    }, 
+    },
     {
       value: 2,
       label: "Hourly"
-    }, 
+    },
     {
       value: 3,
       label: "Daily"
-    }, 
+    },
     {
       value: 4,
       label: "Weekly"
-    }, 
+    },
     {
       value: 5,
       label: "Monthly"
-    }, 
-    {
-      value: 6,
-      label: "Yearly"
     }];
 
     if (typeof $scope.config === "object" && !$scope.config.length) {
-      if (typeof $scope.config.options === "object") {
-        var optionsKeyArray = Object.keys($scope.config.options);
-        for (var i in optionsKeyArray) {
-          var currentKey = optionsKeyArray[i].replace(/^allow/, "");
-          var originalKey = optionsKeyArray[i];
-          if (!$scope.config.options[originalKey]) {
-            for (var b in $scope.frequency) {
-              if ($scope.frequency[b].label === currentKey) {
-                $scope.frequency.splice(b, 1);
-              }
+      if ($scope.config.excludedFrequencies) {
+        // As JS badly supports Sets and amount of values is relatively small so use 2 for loops
+        for (var i = $scope.frequency.length - 1; i >= 0; i--) {
+          for (var j = $scope.config.excludedFrequencies.length; j >= 0; j--) {
+            if ($scope.frequency[i].label === $scope.config.excludedFrequencies[j]) {
+              $scope.frequency.splice(i, 1);
             }
           }
         }
@@ -55,23 +47,13 @@ export function CronGeneratorDirective (cronGeneratorService) {
       } else {
         $scope.allowMultiple = false;
       }
-
-      if (angular.isDefined($scope.config.quartz) && $scope.config.quartz) {
-        $scope.cronStyle = "quartz";
-      } else {
-        $scope.cronStyle = "default";
-      }
     }
 
     $scope.minutes = Array.apply(null, Array(60)).map(function (_, i) {return i;});
     $scope.hours = Array.apply(null, Array(24)).map(function (_, i) {return i;});
     $scope.daysOfMonth = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
-    $scope.days = [0, 1, 2, 3, 4, 5, 6];
     $scope.months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-
-		if($scope.cronStyle === "quartz") {
-        $scope.days = [1, 2, 3, 4, 5, 6, 7];
-    }
+    $scope.days = [1, 2, 3, 4, 5, 6, 7];
 
     $scope.$watch("myFrequency", function (n, o) {
 	    if(angular.isUndefined(n)){
@@ -81,7 +63,7 @@ export function CronGeneratorDirective (cronGeneratorService) {
 	    }
 	    if (n && o) {
         if (n.base) {
-          var str = cronGeneratorService.convertObjectIntoCronString(n, $scope.cronStyle, $scope.allowMultiple);
+          var str = cronGeneratorService.getCronString(n, $scope.allowMultiple);
           $ngModel.$setViewValue(str);
         }
 	    }
