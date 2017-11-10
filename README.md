@@ -1,9 +1,16 @@
+It's a fork with fixed bug:
+https://github.com/sarfarazansari/angular-cron-generator/issues/2
+
+Also:
+- Removed the quartz type cron
+- Using only character named fields for month (e.g. JAN) and day of week (e.g. MON)
+- Added documented ability to exclude unneeded timeframes
+- A little bit of refactoring
+
+P.S. I am backend mostly Java dev, js isn't my cup of tea :)
+
 # angular-cron-generator
-A cron expression generator for AngularJS. In both format quartz and unix
-
-## demo
-
-[demo]https://embed.plnkr.co/LCNjHr1s1rlr1FSXesMg/
+A cron expression generator for AngularJS.
 
 ## Installation
 
@@ -46,22 +53,13 @@ You can also set whether or not you want to allow a user to select multiple valu
 
 Setting allowMultiple to either true or false will toggle the ability.
 
+### excludedFrequencies
 
-### Quartz
-
-By default, the cron expression generated is Unix Cron compatible. Incase you use the [Quartz Scheduler](https://github.com/quartz-scheduler/quartz), you would want to enable the `quartz` mode in the config.
-You can do so by passing that flag as `true` in the config object.
+You can exclude timeframes which you don't want to show:
 
   $scope.myConfig = {
-    quartz: true
+    excludedFrequencies: ["Minute","Hourly"]
   }
-
-## Coming Soon:
-
-* Test cases
-* code optimize
-* and hell yeah Support!
-
 
 ## Contribution
 
