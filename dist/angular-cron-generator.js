@@ -12,7 +12,118 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
 
 
+var asyncGenerator = function () {
+  function AwaitValue(value) {
+    this.value = value;
+  }
 
+  function AsyncGenerator(gen) {
+    var front, back;
+
+    function send(key, arg) {
+      return new Promise(function (resolve, reject) {
+        var request = {
+          key: key,
+          arg: arg,
+          resolve: resolve,
+          reject: reject,
+          next: null
+        };
+
+        if (back) {
+          back = back.next = request;
+        } else {
+          front = back = request;
+          resume(key, arg);
+        }
+      });
+    }
+
+    function resume(key, arg) {
+      try {
+        var result = gen[key](arg);
+        var value = result.value;
+
+        if (value instanceof AwaitValue) {
+          Promise.resolve(value.value).then(function (arg) {
+            resume("next", arg);
+          }, function (arg) {
+            resume("throw", arg);
+          });
+        } else {
+          settle(result.done ? "return" : "normal", result.value);
+        }
+      } catch (err) {
+        settle("throw", err);
+      }
+    }
+
+    function settle(type, value) {
+      switch (type) {
+        case "return":
+          front.resolve({
+            value: value,
+            done: true
+          });
+          break;
+
+        case "throw":
+          front.reject(value);
+          break;
+
+        default:
+          front.resolve({
+            value: value,
+            done: false
+          });
+          break;
+      }
+
+      front = front.next;
+
+      if (front) {
+        resume(front.key, front.arg);
+      } else {
+        back = null;
+      }
+    }
+
+    this._invoke = send;
+
+    if (typeof gen.return !== "function") {
+      this.return = undefined;
+    }
+  }
+
+  if (typeof Symbol === "function" && Symbol.asyncIterator) {
+    AsyncGenerator.prototype[Symbol.asyncIterator] = function () {
+      return this;
+    };
+  }
+
+  AsyncGenerator.prototype.next = function (arg) {
+    return this._invoke("next", arg);
+  };
+
+  AsyncGenerator.prototype.throw = function (arg) {
+    return this._invoke("throw", arg);
+  };
+
+  AsyncGenerator.prototype.return = function (arg) {
+    return this._invoke("return", arg);
+  };
+
+  return {
+    wrap: function (fn) {
+      return function () {
+        return new AsyncGenerator(fn.apply(this, arguments));
+      };
+    },
+    await: function (value) {
+      return new AwaitValue(value);
+    }
+  };
+}();
 
 
 
@@ -53,93 +164,55 @@ var CronGeneratorService = function () {
   }
 
   createClass(CronGeneratorService, [{
-    key: 'convertObjectIntoCronString',
-    value: function convertObjectIntoCronString(o, type, allowMultiple) {
-      if (type === "quartz") {
-        return this.getQuartzCronString(o, allowMultiple);
-      } else {
-        return this.getUnixCronString(o);
-      }
-    }
-  }, {
-    key: 'getQuartzCronString',
-    value: function getQuartzCronString(o, allowMultiple) {
-      var cron = ["*", "*", "*", "*", "*", "?", "*"],
+    key: 'getCronString',
+    value: function getCronString(o, allowMultiple) {
+      var cron = ["*", "*", "*", "*", "?"],
           count = parseInt(o.base);
       if (count <= 1) {
-        cron[1] = typeof o.minutes !== "undefined" ? "*/" + o.minutes : "*";
+        cron[0] = o.minutes ? "*/" + o.minutes : "*";
       } else if (count >= 1) {
-        cron[1] = typeof o.minutes !== "undefined" ? o.minutes : "*";
-      }
-      if (count <= 2) {
-        cron[2] = typeof o.hours !== "undefined" ? "*/" + o.hours : "*";
-      } else if (count >= 2) {
-        cron[2] = typeof o.hours !== "undefined" ? o.hours : "*";
-      }
-      if (count >= 3) {
-        cron[3] = typeof o.daysOfMonth !== "undefined" ? o.daysOfMonth : "*";
-      }
-      if (count >= 4) {
-        if (o.days) {
-          cron[3] = "?";
-        }
-        if (typeof o.days !== "undefined") {
-          if (allowMultiple) {
-            var str = [];
-            angular.forEach(o.days, function (idx) {
-              str.push(DAY_LOOKUPS[idx - 1]);
-            });
-            cron[5] = str.join();
-          } else {
-            cron[5] = DAY_LOOKUPS[o.days - 1];
-          }
-        } else {
-          cron[5] = "?";
-        }
-      }
-      if (count >= 5) {
-        if (typeof o.months !== "undefined") {
-          if (allowMultiple) {
-            var _str = [];
-            angular.forEach(o.months, function (idx) {
-              _str.push(MONTH_LOOKUPS[idx]);
-            });
-            cron[4] = _str.join();
-          } else {
-            cron[4] = MONTH_LOOKUPS[o.months];
-          }
-        } else {
-          cron[4] = "*";
-        }
-      }
-      return cron.join(" ");
-    }
-  }, {
-    key: 'getUnixCronString',
-    value: function getUnixCronString(o) {
-      var cron = ["*", "*", "*", "*", "*"],
-          count = parseInt(o.base);
-      if (count <= 1) {
-        cron[0] = typeof o.minutes !== "undefined" ? "*/" + o.minutes : "*";
-      } else if (count >= 1) {
-        cron[0] = typeof o.minutes !== "undefined" ? o.minutes : "*";
+        cron[0] = o.minutes ? o.minutes : "*";
       }
       if (count <= 2) {
         cron[1] = typeof o.hours !== "undefined" ? "*/" + o.hours : "*";
       } else if (count >= 2) {
         cron[1] = typeof o.hours !== "undefined" ? o.hours : "*";
       }
-      if (count <= 3) {
-        cron[2] = typeof o.daysOfMonth !== "undefined" ? "*/" + o.daysOfMonth : "*";
-      } else if (count >= 3) {
+      if (count >= 3) {
         cron[2] = typeof o.daysOfMonth !== "undefined" ? o.daysOfMonth : "*";
       }
       if (count >= 4) {
-        cron[4] = typeof o.days !== "undefined" ? o.days : "*";
+        if (o.days) {
+          cron[2] = "?";
+        }
+        if (o.days) {
+          if (allowMultiple) {
+            var str = [];
+            angular.forEach(o.days, function (idx) {
+              str.push(DAY_LOOKUPS[idx - 1]);
+            });
+            cron[4] = str.join();
+          } else {
+            cron[4] = DAY_LOOKUPS[o.days - 1];
+          }
+        } else {
+          cron[4] = "?";
+        }
       }
       if (count >= 5) {
-        cron[4] = "*";
-        cron[3] = typeof o.months !== "undefined" ? o.months : "*";
+        if (o.months) {
+          if (allowMultiple) {
+            var _str = [];
+            angular.forEach(o.months, function (idx) {
+              _str.push(MONTH_LOOKUPS[idx - 1]);
+            });
+            cron[3] = _str.join();
+          } else {
+            cron[3] = MONTH_LOOKUPS[o.months - 1];
+          }
+        } else {
+          cron[3] = "*";
+        }
       }
       return cron.join(" ");
     }
@@ -173,22 +246,15 @@ function CronGeneratorDirective(cronGeneratorService) {
     }, {
       value: 5,
       label: "Monthly"
-    }, {
-      value: 6,
-      label: "Yearly"
     }];
 
     if (_typeof($scope.config) === "object" && !$scope.config.length) {
-      if (_typeof($scope.config.options) === "object") {
-        var optionsKeyArray = Object.keys($scope.config.options);
-        for (var i in optionsKeyArray) {
-          var currentKey = optionsKeyArray[i].replace(/^allow/, "");
-          var originalKey = optionsKeyArray[i];
-          if (!$scope.config.options[originalKey]) {
-            for (var b in $scope.frequency) {
-              if ($scope.frequency[b].label === currentKey) {
-                $scope.frequency.splice(b, 1);
-              }
+      if ($scope.config.excludedFrequencies) {
+        // As JS badly supports Sets and amount of values is relatively small so use 2 for loops
+        for (var i = $scope.frequency.length - 1; i >= 0; i--) {
+          for (var j = $scope.config.excludedFrequencies.length; j >= 0; j--) {
+            if ($scope.frequency[i].label === $scope.config.excludedFrequencies[j]) {
+              $scope.frequency.splice(i, 1);
             }
           }
         }
@@ -197,12 +263,6 @@ function CronGeneratorDirective(cronGeneratorService) {
         $scope.allowMultiple = $scope.config.allowMultiple;
       } else {
         $scope.allowMultiple = false;
-      }
-
-      if (angular.isDefined($scope.config.quartz) && $scope.config.quartz) {
-        $scope.cronStyle = "quartz";
-      } else {
-        $scope.cronStyle = "default";
       }
     }
 
@@ -213,12 +273,8 @@ function CronGeneratorDirective(cronGeneratorService) {
       return i;
     });
     $scope.daysOfMonth = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
-    $scope.days = [0, 1, 2, 3, 4, 5, 6];
     $scope.months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-
-    if ($scope.cronStyle === "quartz") {
-      $scope.days = [1, 2, 3, 4, 5, 6, 7];
-    }
+    $scope.days = [1, 2, 3, 4, 5, 6, 7];
 
     $scope.$watch("myFrequency", function (n, o) {
       if (angular.isUndefined(n)) {
@@ -228,7 +284,7 @@ function CronGeneratorDirective(cronGeneratorService) {
       }
       if (n && o) {
         if (n.base) {
-          var str = cronGeneratorService.convertObjectIntoCronString(n, $scope.cronStyle, $scope.allowMultiple);
+          var str = cronGeneratorService.getCronString(n, $scope.allowMultiple);
           $ngModel.$setViewValue(str);
         }
       }
@@ -285,90 +341,77 @@ function CronGeneratorDirective(cronGeneratorService) {
 }
 
 function CronNumeral() {
-  "ngInject";
+    "ngInject";
 
-  return function (input) {
-    switch (input) {
-      case 1:
-        return "1st";
-      case 2:
-        return "2nd";
-      case 3:
-        return "3rd";
-      case 21:
-        return "21st";
-      case 22:
-        return "22nd";
-      case 23:
-        return "23rd";
-      case 31:
-        return "31st";
-      case null:
-        return null;
-      default:
-        return input + "th";
-    }
-  };
+    return function (input) {
+        switch (input) {
+            case 1:
+                return "1st";
+            case 2:
+                return "2nd";
+            case 3:
+                return "3rd";
+            case 21:
+                return "21st";
+            case 22:
+                return "22nd";
+            case 23:
+                return "23rd";
+            case 31:
+                return "31st";
+            case null:
+                return null;
+            default:
+                return input + "th";
+        }
+    };
 }
 
 function CronMonthName() {
-  'ngInject';
+    'ngInject';
 
-  return function (input) {
-    var months = {
-      1: "January",
-      2: "February",
-      3: "March",
-      4: "April",
-      5: "May",
-      6: "June",
-      7: "July",
-      8: "August",
-      9: "September",
-      10: "October",
-      11: "November",
-      12: "December"
+    return function (input) {
+        var months = {
+            1: "January",
+            2: "February",
+            3: "March",
+            4: "April",
+            5: "May",
+            6: "June",
+            7: "July",
+            8: "August",
+            9: "September",
+            10: "October",
+            11: "November",
+            12: "December"
+        };
+        if (input !== null && angular.isDefined(months[input])) {
+            return months[input];
+        } else {
+            return null;
+        }
     };
-    if (input !== null && angular.isDefined(months[input])) {
-      return months[input];
-    } else {
-      return null;
-    }
-  };
 }
 
 function CronDayName() {
-  "ngInject";
+    "ngInject";
 
-  return function (input, cronType) {
-    var days = void 0;
-    if (cronType === "quartz") {
-      days = {
-        1: "Sunday",
-        2: "Monday",
-        3: "Tuesday",
-        4: "Wednesday",
-        5: "Thursday",
-        6: "Friday",
-        7: "Saturday"
-      };
-    } else {
-      days = {
-        0: "Sunday",
-        1: "Monday",
-        2: "Tuesday",
-        3: "Wednesday",
-        4: "Thursday",
-        5: "Friday",
-        6: "Saturday"
-      };
-    }
-    if (input !== null && angular.isDefined(days[input])) {
-      return days[input];
-    } else {
-      return null;
-    }
-  };
+    return function (input) {
+        var days = {
+            1: "Sunday",
+            2: "Monday",
+            3: "Tuesday",
+            4: "Wednesday",
+            5: "Thursday",
+            6: "Friday",
+            7: "Saturday"
+        };
+        if (input !== null && angular.isDefined(days[input])) {
+            return days[input];
+        } else {
+            return null;
+        }
+    };
 }
 
 angular.module('angular-cron-generator', []).service('cronGeneratorService', CronGeneratorService).directive('cronGenerator', CronGeneratorDirective).filter('cronNumeral', CronNumeral).filter('cronMonthName', CronMonthName).filter('cronDayName', CronDayName);
